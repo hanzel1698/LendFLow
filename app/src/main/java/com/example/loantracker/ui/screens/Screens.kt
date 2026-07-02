@@ -54,7 +54,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -524,7 +524,22 @@ fun DebtsLendingListScreen(
 ) {
     val records by viewModel.records.collectAsState()
     val emis by viewModel.emis.collectAsState()
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Records, 1 = EMIs
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Debts, 1 = Lends, 2 = Loans, 3 = EMIs
+
+    val filteredRecords = remember(records, selectedTab) {
+        when (selectedTab) {
+            0 -> records.filter { it.type == "DEBT" }
+            1 -> records.filter { it.type == "LEND" }
+            2 -> records.filter { it.type == "LOAN" || it.type == "KGOA_LOAN" }
+            else -> emptyList()
+        }
+    }
+    val emptyMessage = when (selectedTab) {
+        0 -> "No debts logged"
+        1 -> "No lends logged"
+        2 -> "No loans logged"
+        else -> "No EMIs logged"
+    }
 
     Scaffold(
         topBar = {
@@ -545,43 +560,37 @@ fun DebtsLendingListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surface,
+                edgePadding = 0.dp
             ) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Debts, Lends & Loans") }
+                    text = { Text("Debts") }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Credit Card EMIs") }
+                    text = { Text("Lends") }
+                )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Loans") }
+                )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("EMIs") }
                 )
             }
 
-            if (selectedTab == 0) {
-                if (records.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No loans or debts logged", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(records) { record ->
-                            RecordRow(record = record, onClick = { onNavigate(RecordDetail(record.id)) })
-                        }
-                    }
-                }
-            } else {
+            if (selectedTab == 3) {
                 if (emis.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No credit card EMIs logged", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(emptyMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(
@@ -593,6 +602,21 @@ fun DebtsLendingListScreen(
                         items(emis) { emi ->
                             EmiRow(emi = emi, onClick = { onNavigate(EmiDetail(emi.id)) })
                         }
+                    }
+                }
+            } else if (filteredRecords.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(emptyMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredRecords) { record ->
+                        RecordRow(record = record, onClick = { onNavigate(RecordDetail(record.id)) })
                     }
                 }
             }
