@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.example.loantracker.releasenotes.WhatsNewGate
 import com.example.loantracker.theme.LoanTrackerTheme
 
 class MainActivity : ComponentActivity() {
@@ -16,7 +17,11 @@ class MainActivity : ComponentActivity() {
 
     enableEdgeToEdge()
     setContent {
-      LoanTrackerTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      LoanTrackerTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+          WhatsNewGate { MainNavigation() }
+        }
+      }
     }
   }
 }
