@@ -128,12 +128,13 @@ jobs:
         id: version
         run: |
           GRADLE_FILE=$(find . -path "*/app/build.gradle.kts" | head -1)
-          VERSION_NAME=$(grep -E 'versionName\s*=' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          # CI_VERSION_CODE is what the build actually stamped into the APK.
+          BASE_NAME=$(grep -E 'versionName\s*=' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          # Mirror app/build.gradle.kts: CI builds are <major>.<run number>.
+          VERSION_NAME="${BASE_NAME%%.*}.$CI_VERSION_CODE"
           VERSION_CODE="$CI_VERSION_CODE"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-          echo "tag=v${VERSION_NAME}-build${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4

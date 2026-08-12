@@ -37,16 +37,23 @@ def parse_version(gradle_file: Path) -> tuple[int, str]:
 
 
 def ci_version_code() -> int | None:
-    """CI overrides the version code so each build is a distinct release.
-
-    ReleaseNotesRepository.shouldShow hides the What's New screen unless the
-    bundled versionCode matches the installed APK exactly, so these notes have to
-    carry the same override the build used.
-    """
     raw = os.environ.get("CI_VERSION_CODE", "").strip()
     if not raw.isdigit():
         return None
     return int(raw) or None
+
+
+def apply_ci_override(version_code: int, version_name: str) -> tuple[int, str]:
+    """Mirror the CI version stamping in app/build.gradle.kts.
+
+    ReleaseNotesRepository.shouldShow hides the What's New screen unless the
+    bundled versionCode matches the installed APK exactly, so these notes have to
+    carry the same values the build stamped.
+    """
+    build = ci_version_code()
+    if build is None:
+        return version_code, version_name
+    return build, f"{version_name.split('.')[0]}.{build}"
 
 
 def run_git(args: list[str], cwd: Path) -> str:
@@ -108,7 +115,7 @@ def main() -> None:
 
     gradle_file = find_gradle_file(root)
     version_code, version_name = parse_version(gradle_file)
-    version_code = ci_version_code() or version_code
+    version_code, version_name = apply_ci_override(version_code, version_name)
     assets_dir = gradle_file.parent / "src/main/assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
 

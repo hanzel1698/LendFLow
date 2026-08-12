@@ -60,7 +60,12 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        ciVersionCode?.let { versionCode = it }
+        ciVersionCode?.let { build ->
+            versionCode = build
+            // Built by concatenation, not a string literal, so the versionName sed in
+            // play-version-bump-build.yml cannot rewrite this line.
+            versionName = versionName!!.substringBefore('.') + "." + build
+        }
     }
 
     signingConfigs {
