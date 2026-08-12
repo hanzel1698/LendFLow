@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -33,6 +34,19 @@ def parse_version(gradle_file: Path) -> tuple[int, str]:
     if not name_match or not code_match:
         raise SystemExit(f"Could not parse version from {gradle_file}")
     return int(code_match.group(1)), name_match.group(1)
+
+
+def ci_version_code() -> int | None:
+    """CI overrides the version code so each build is a distinct release.
+
+    ReleaseNotesRepository.shouldShow hides the What's New screen unless the
+    bundled versionCode matches the installed APK exactly, so these notes have to
+    carry the same override the build used.
+    """
+    raw = os.environ.get("CI_VERSION_CODE", "").strip()
+    if not raw.isdigit():
+        return None
+    return int(raw) or None
 
 
 def run_git(args: list[str], cwd: Path) -> str:
@@ -94,6 +108,7 @@ def main() -> None:
 
     gradle_file = find_gradle_file(root)
     version_code, version_name = parse_version(gradle_file)
+    version_code = ci_version_code() or version_code
     assets_dir = gradle_file.parent / "src/main/assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
 

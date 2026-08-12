@@ -46,6 +46,11 @@ fun resolveUploadSigning(): UploadSigningConfig? {
 
 val uploadSigning = resolveUploadSigning()
 
+// CI overrides the version code so every distributed build is a distinct release.
+// Play builds leave CI_VERSION_CODE unset and use the committed value below, which
+// play-version-bump-build.yml owns and increments.
+val ciVersionCode = System.getenv("CI_VERSION_CODE")?.toIntOrNull()?.takeIf { it > 0 }
+
 android {
     namespace = "com.example.loantracker"
     compileSdk = 36
@@ -55,6 +60,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        ciVersionCode?.let { versionCode = it }
     }
 
     signingConfigs {

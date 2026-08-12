@@ -13,6 +13,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
 
+    # Give every CI build its own version code so App Distribution releases are
+    # distinguishable and each one re-triggers the in-app What's New screen. Play
+    # releases are built by play-version-bump-build.yml, which leaves this unset.
+    env:
+      CI_VERSION_CODE: ${{ github.run_number }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -123,7 +129,8 @@ jobs:
         run: |
           GRADLE_FILE=$(find . -path "*/app/build.gradle.kts" | head -1)
           VERSION_NAME=$(grep -E 'versionName\s*=' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          VERSION_CODE=$(grep -E 'versionCode\s*=' "$GRADLE_FILE" | head -1 | sed -E 's/.*=\s*([0-9]+).*/\1/')
+          # CI_VERSION_CODE is what the build actually stamped into the APK.
+          VERSION_CODE="$CI_VERSION_CODE"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION_NAME}-build${{ github.run_number }}" >> "$GITHUB_OUTPUT"
