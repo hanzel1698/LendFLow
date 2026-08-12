@@ -145,15 +145,14 @@ jobs:
       - name: Check Firebase App Distribution config
         id: firebase_config
         env:
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: |
           set -euo pipefail
-          if [ -n "$FIREBASE_APP_ID" ] && [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Firebase App Distribution skipped::Set the FIREBASE_APP_ID and FIREBASE_SERVICE_ACCOUNT_JSON repository secrets to enable APK distribution."
+            echo "::warning title=Firebase App Distribution skipped::Set the FIREBASE_SERVICE_ACCOUNT_JSON repository secret to enable APK distribution."
           fi
 
       - name: Compose Firebase release notes
@@ -176,7 +175,8 @@ jobs:
         if: steps.firebase_config.outputs.configured == 'true'
         uses: wzieba/Firebase-Distribution-Github-Action@v1.7.1
         with:
-          appId: ${{ secrets.FIREBASE_APP_ID }}
+          # Firebase App ID is not a secret - it ships inside google-services.json.
+          appId: "1:659971235219:android:2a4522fcd381bc037c9c66"
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           file: ${{ steps.apk.outputs.path }}
           testers: hanzel.h.fernandez@gmail.com
