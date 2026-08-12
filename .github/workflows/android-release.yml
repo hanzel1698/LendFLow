@@ -142,6 +142,46 @@ jobs:
           path: ${{ steps.aab.outputs.path }}
           retention-days: 30
 
+      - name: Check Firebase App Distribution config
+        id: firebase_config
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -n "$FIREBASE_APP_ID" ] && [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Firebase App Distribution skipped::Set the FIREBASE_APP_ID and FIREBASE_SERVICE_ACCOUNT_JSON repository secrets to enable APK distribution."
+          fi
+
+      - name: Compose Firebase release notes
+        if: steps.firebase_config.outputs.configured == 'true'
+        run: |
+          set -uo pipefail
+          NOTES_FILE="firebase-release-notes.txt"
+          {
+            echo "Version ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }}) - build ${{ github.run_number }}"
+            echo "Commit ${GITHUB_SHA:0:7} on ${GITHUB_REF_NAME}"
+            echo
+            # Reuse the feature list already generated for the in-app "What's New" screen.
+            # Never fail the build over release notes - fall back to the commit subject.
+            jq -r '.features[] | "- " + .' app/src/main/assets/release_notes.json 2>/dev/null \
+              || git log -1 --pretty='- %s'
+          } > "$NOTES_FILE"
+          cat "$NOTES_FILE"
+
+      - name: Distribute release APK to Firebase App Distribution
+        if: steps.firebase_config.outputs.configured == 'true'
+        uses: wzieba/Firebase-Distribution-Github-Action@v1.7.1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          file: ${{ steps.apk.outputs.path }}
+          testers: hanzel.h.fernandez@gmail.com
+          releaseNotesFile: firebase-release-notes.txt
+
       - name: Publish GitHub Release
         uses: ncipollo/release-action@v1
         with:
