@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Give every CI build its own version code so App Distribution releases are
-    # distinguishable and each one re-triggers the in-app What's New screen. Play
-    # releases are built by play-version-bump-build.yml, which leaves this unset.
+    # distinguishable and each one re-triggers the in-app What's New screen.
     env:
       CI_VERSION_CODE: ${{ github.run_number }}
 
@@ -78,8 +77,8 @@ jobs:
           fi
           echo "Upload keystore fingerprint OK: $ACTUAL_SHA1"
 
-      - name: Build release APK and AAB
-        run: ./gradlew assembleRelease bundleRelease --stacktrace
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Find APK
         id: apk
@@ -91,35 +90,6 @@ jobs:
           fi
           echo "path=$APK" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$APK")" >> "$GITHUB_OUTPUT"
-
-      - name: Find AAB
-        id: aab
-        run: |
-          AAB=$(find . -path "*/build/outputs/bundle/release/*.aab" | head -1)
-          if [ -z "$AAB" ]; then
-            echo "Error: release AAB not found"
-            exit 1
-          fi
-          echo "path=$AAB" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "$AAB")" >> "$GITHUB_OUTPUT"
-
-      - name: Verify AAB Play signing certificate
-        run: |
-          set -euo pipefail
-          AAB="${{ steps.aab.outputs.path }}"
-          CERT=$(unzip -Z1 "$AAB" | grep -E '^META-INF/.*\.(RSA|EC)$' | head -1)
-          unzip -p "$AAB" "$CERT" | keytool -printcert | tee /tmp/aab-signing-cert.txt
-          if grep -q "CN=Android Debug" /tmp/aab-signing-cert.txt; then
-            echo "Error: AAB is signed with the Android debug key."
-            exit 1
-          fi
-          norm_sha1() { echo "$1" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]'; }
-          ACTUAL_SHA1=$(grep -i "SHA1:" /tmp/aab-signing-cert.txt | head -1 | sed -E 's/.*SHA1:[[:space:]]*//')
-          if [ "$(norm_sha1 "$ACTUAL_SHA1")" != "$(norm_sha1 "$EXPECTED_SHA1")" ]; then
-            echo "Error: AAB SHA1 ($ACTUAL_SHA1) does not match Play upload key ($EXPECTED_SHA1)."
-            exit 1
-          fi
-          echo "AAB signing certificate OK: $ACTUAL_SHA1"
 
       - name: Extract app version
         id: version
@@ -138,13 +108,6 @@ jobs:
         with:
           name: app-release-${{ steps.version.outputs.tag }}
           path: ${{ steps.apk.outputs.path }}
-          retention-days: 30
-
-      - name: Upload release AAB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab-${{ steps.version.outputs.tag }}
-          path: ${{ steps.aab.outputs.path }}
           retention-days: 30
 
       - name: Check Firebase App Distribution config
@@ -190,7 +153,7 @@ jobs:
       - name: Publish GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ${{ steps.apk.outputs.path }},${{ steps.aab.outputs.path }}
+          artifacts: ${{ steps.apk.outputs.path }}
           tag: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.name }} (build ${{ github.run_number }})
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -200,4 +163,4 @@ jobs:
             **Version:** ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
             **Commit:** ${{ github.sha }}
 
-            Download the APK to sideload on a device, or the AAB to upload to Google Play.
+            Download the APK to sideload on a device.
